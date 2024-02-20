@@ -1,4 +1,3 @@
-use serde_json;
 use serde_json::Value;
 
 pub async fn http_get(url: String) -> Result<Value, String> {
