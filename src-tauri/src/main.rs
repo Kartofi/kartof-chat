@@ -4,18 +4,17 @@
 mod utils;
 
 use std::{thread, time};
-use tauri::Window;
+use tauri::App;
+use tauri::{Manager, Window,AppHandle};
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
 async fn greet(name: String) -> Result<String, String> {
-    //utils::tcp::Connect();
     match utils::http::http_get("http://localhost:8000/api".to_string()).await {
-        Ok(data) => {
-            Ok(format!("Hello, {}! You've been greeted from Rust!", data["name"]))
-        }
-        Err(_) => {
-            Err(String::from("Failed to perform HTTP request"))
-        }
+        Ok(data) => Ok(format!(
+            "Hello, {}! You've been greeted from Rust!",
+            data["name"]
+        )),
+        Err(_) => Err(String::from("Failed to perform HTTP request")),
     }
 }
 
@@ -29,14 +28,15 @@ fn do_with_progress(window: Window) -> String {
     "done".into()
 }
 #[tauri::command]
-async fn connect(window: Window) -> String {
-    utils::tcp::Connect();
-    return "ok".to_string();
+fn connect(window: Window, app: AppHandle) -> Result<(), String> {
+    app.emit_all("close_tcp","");
+    utils::tcp::handle_websockets(app);
+    Ok(())
+    //window.unlisten("connect");
 }
-
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet,do_with_progress,connect])
+        .invoke_handler(tauri::generate_handler![greet, do_with_progress, connect])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

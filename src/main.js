@@ -20,14 +20,40 @@ async function progress() {
   destroy();
 }
 async function connect() {
+  const destroy = await listen("client_message", async (p) => {
+    let json = await p;
+    console.log(json.payload);
+    console.log(`Progress -> ${p}`);
+  });
   const res = await invoke("connect");
   console.log(res);
+}
+async function listenMsg(){
+  const destroy = await listen("client_message", async (p) => {
+    let json = await p;
+    console.log(json.payload);
+    console.log(`Progress -> ${p}`);
+  });
+}
+async function sendMessage() {
+  emit("message", {
+    message: "Tauri is awesome!",
+  });
+}
+
+if (
+  window.performance.navigation.type !=
+  window.performance.navigation.TYPE_RELOAD
+) {
+  connect();
+}else{
+  listenMsg();
 }
 window.addEventListener("DOMContentLoaded", () => {
   greetInputEl = document.querySelector("#greet-input");
   greetMsgEl = document.querySelector("#greet-msg");
   document.querySelector("#greet-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    connect();
+    sendMessage();
   });
 });

@@ -1,35 +1,35 @@
-use std::io::{Read, Write};
-use std::net::TcpStream;
-use std::str::from_utf8;
+use ws::{connect, CloseCode, Message, Result};
 
-pub fn Connect() {
-    match TcpStream::connect("localhost:3333") {
-        Ok(mut stream) => {
-            println!("Successfully connected to server in port 3333");
+use tauri::{Manager,AppHandle};
+use std::{thread, time};
 
-            let msg = b"Hello!";
+#[derive(Clone, serde::Serialize)]
+struct Payload {
+  message: String,
+}
 
-            stream.write(msg).unwrap();
-            println!("Sent Hello, awaiting reply...");
+pub fn handle_websockets(app: AppHandle) {
+    thread::spawn(move ||{
+        connect("ws://127.0.0.1:3012", |out| {
+            let out_clone = out.clone();
+            let app_clone = app.clone();
 
-            let mut data = [0 as u8; 6]; // using 6 byte buffer
-            match stream.read_exact(&mut data) {
-                Ok(_) => {
-                    if &data == msg {
-                        println!("Reply is ok!");
-                    } else {
-                        let text = from_utf8(&data).unwrap();
-                        println!("Unexpected reply: {}", text);
-                    }
-                }
-                Err(e) => {
-                    println!("Failed to receive data: {}", e);
-                }
+            let out_clone2 = out.clone();
+
+            app.listen_global("message",move |event| {
+                out_clone.send(event.payload().expect("Error").to_string()).unwrap();
+            });
+            app.listen_global("close_tcp",move |event| {
+                out_clone2.close(CloseCode::Normal);
+            });
+            move |msg| {
+                println!("Got message: {}", msg);
+                app_clone.emit_all("client_message", Payload{message:"123".to_string()});
+                //out.close(CloseCode::Normal);
+                Ok(())
+            
             }
-        }
-        Err(e) => {
-            println!("Failed to connect: {}", e);
-        }
-    }
-    println!("Terminated.");
+        });
+    });
+    
 }
