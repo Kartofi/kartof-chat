@@ -20,24 +20,23 @@ async function progress() {
   destroy();
 }
 async function connect() {
-  const destroy = await listen("client_message", async (p) => {
-    let json = await p;
-    console.log(json.payload);
-    console.log(`Progress -> ${p}`);
-  });
+  listenMsg();
   const res = await invoke("connect");
   console.log(res);
 }
-async function listenMsg(){
+async function listenMsg() {
   const destroy = await listen("client_message", async (p) => {
     let json = await p;
-    console.log(json.payload);
-    console.log(`Progress -> ${p}`);
+    json = JSON.parse(json.payload);
+    greetMsgEl.innerHTML =
+      greetMsgEl.innerHTML + "<br>" + json.from + " : " + json.message;
+    console.log(`Progress -> ${json}`);
   });
 }
 async function sendMessage() {
   emit("message", {
-    message: "Tauri is awesome!",
+    from: "dd",
+    message: greetInputEl.value,
   });
 }
 
@@ -46,7 +45,7 @@ if (
   window.performance.navigation.TYPE_RELOAD
 ) {
   connect();
-}else{
+} else {
   listenMsg();
 }
 window.addEventListener("DOMContentLoaded", () => {

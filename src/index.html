@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri App</title>
     <script type="module" src="/main.js" defer></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <style>
       .logo.vanilla:hover {
         filter: drop-shadow(0 0 2em #ffe21c);
@@ -34,7 +35,7 @@
       </div>
 
       <p>Click on the Tauri logo to learn more about the framework</p>
-
+      <a id="messages"></a>
       <form class="row" id="greet-form">
         <input id="greet-input" placeholder="Enter a name..." />
         <button type="submit">Greet</button>
