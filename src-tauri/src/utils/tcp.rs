@@ -1,6 +1,6 @@
 use ws::{connect, CloseCode, Message, Result};
 
-use std::{thread, time};
+use std::{os::windows::ffi::OsStrExt, thread, time};
 use tauri::{AppHandle, Manager};
 
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 struct Payload {
     from: String,
     message: String,
+    time: u64,
 }
 
 pub fn handle_websockets(app: AppHandle) {
@@ -25,13 +26,22 @@ pub fn handle_websockets(app: AppHandle) {
                     .unwrap();
             });
             app.listen_global("close_tcp", move |event| {
-                out_clone2.close(CloseCode::Normal);
+                out_clone2.close(CloseCode::Normal).unwrap();
             });
             move |msg: Message| {
-                println!("Got message: {}", msg);
-                app_clone.emit_all("client_message", msg.to_string()).unwrap();
-                //out.close(CloseCode::Normal);
-                Ok(())
+                let string_msg: String = msg.to_string();
+                if string_msg.contains("{") == false {
+                    app_clone
+                        .emit_all("client_name", string_msg.clone())
+                        .unwrap();
+                    Ok(())
+                } else {
+                    println!("Got message: {}", msg);
+                    app_clone
+                        .emit_all("client_message", string_msg.clone())
+                        .unwrap();
+                    Ok(())
+                }
             }
         });
     });
