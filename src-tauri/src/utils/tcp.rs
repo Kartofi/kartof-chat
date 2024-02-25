@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 struct Payload {
     from: String,
     message: String,
+    file_data: String,
+    file_type: String,
     time: u64,
 }
 
@@ -36,7 +38,7 @@ pub fn handle_websockets(app: AppHandle) {
                         .unwrap();
                     Ok(())
                 } else {
-                    println!("Got message: {}", msg);
+                    println!("Got message");
                     app_clone
                         .emit_all("client_message", string_msg.clone())
                         .unwrap();

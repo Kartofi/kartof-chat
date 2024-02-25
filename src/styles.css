@@ -94,6 +94,10 @@ button {
   border-style: solid;
   border-color: rgb(255, 255, 255);
 }
+img {
+  width: 100%;
+  max-width: 350px;
+}
 .message {
   background-color: #2f2f2f;
   padding: 1px 1px;

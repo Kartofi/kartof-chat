@@ -13,14 +13,37 @@
       }
     </style>
   </head>
+  <script>
+    function download(filename, text) {
+      var element = document.createElement("a");
+      element.setAttribute(
+        "href",
+        "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+      );
+      element.setAttribute("download", filename);
 
+      element.style.display = "none";
+      document.body.appendChild(element);
+
+      element.click();
+
+      document.body.removeChild(element);
+    }
+  </script>
   <body>
     <div class="container">
       <a id="client_name">???</a>
       <div style="overflow-y: scroll; height: 400px" id="messages"></div>
-      <form class="row" id="greet-form">
-        <input id="message-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
+      <br />
+      <form class="row" id="chat-form">
+        <input type="file" id="fileInput" accept="image/*" />
+        <input
+          id="message-input"
+          minlength="1"
+          placeholder="Enter a name..."
+          required
+        />
+        <button type="submit">Send</button>
       </form>
     </div>
   </body>
