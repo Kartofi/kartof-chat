@@ -1,5 +1,6 @@
 const { invoke } = window.__TAURI__.tauri;
 const { listen, emit } = window.__TAURI__.event;
+const { open, save } = window.__TAURI__.dialog;
 
 let messageInputEl;
 let messages;
@@ -47,7 +48,9 @@ async function listenMsg() {
       "Your name is " + text.payload;
   });
 
-  emit("message", "");
+  emit("message", {
+    request: "get_name",
+  });
 }
 function formatBytes(bytes, decimals = 2) {
   if (!+bytes) return "0 Bytes";
@@ -77,6 +80,20 @@ function sizeInBytes(str) {
   var m = encodeURIComponent(str).match(/%[89ABab]/g);
   return str.length + (m ? m.length : 0);
 }
+function escapeHtml(unsafe) {
+  return unsafe.replace(/[&<"']/g, function (match) {
+    switch (match) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#039;";
+    }
+  });
+}
 function formatMessageHtml(json) {
   let date_text = new Date(json.time).toLocaleTimeString("en-US");
 
@@ -88,6 +105,9 @@ function formatMessageHtml(json) {
   date_text = time + " " + pmAM;
 
   let element = "";
+
+  json.message = escapeHtml(json.message);
+
   switch (json.file_type) {
     case "plainText":
     case "":
@@ -125,9 +145,11 @@ function formatMessageHtml(json) {
       if (json.message.length > maxTextLength) {
         element = `<a class="message">👤${
           json.from
-        } 🕛${date_text} : <button onclick="download("message.txt","${
+        } 🕛${date_text} : <br> <button onclick="download("message.txt","${
           json.message
-        }")"</button> <br><button onclick="download("file.${json.file_type}","${
+        }")">messsage.txt (${sizeOfString(
+          json.message
+        )})</button><button onclick="download("file.${json.file_type}","${
           json.file_data
         }")">file.${json.file_type} (${sizeOfString(
           json.message
@@ -138,7 +160,7 @@ function formatMessageHtml(json) {
         } <br><button onclick="download("file.${json.file_type}","${
           json.file_data
         }")">file.${json.file_type} (${sizeOfString(
-          json.message
+          json.file_data
         )})</button><br></a>`;
       }
 
@@ -148,20 +170,13 @@ function formatMessageHtml(json) {
   return element;
 }
 
-function convertFileToBase64(callback) {
+function getFile() {
   var fileInput = document.getElementById("fileInput");
   if (fileInput.files.length == 0) {
-    callback(null, null);
-    return;
+    return null;
   }
   var file = fileInput.files[0];
-
-  var reader = new FileReader();
-  reader.onload = function (event) {
-    var base64String = event.target.result;
-    callback(file, base64String);
-  };
-  reader.readAsDataURL(file);
+  return file;
 }
 
 async function sendMessage() {
@@ -176,28 +191,21 @@ async function sendMessage() {
     time: 0,
   };
   let sizeMessage = sizeInBytes(json.message);
-  let sizeFile = sizeInBytes(json.file_data);
 
   if (sizeMessage > maxMessageSize) {
     alert("Message is too large");
     return;
   }
-  if (sizeFile > maxMessageSize) {
-    alert("File is too large! Max size is 5MB.");
-    return;
-  }
-  convertFileToBase64(function (name, base64) {
-    if (name != null) {
-      let sizeFile = sizeInBytes(base64);
-      if (sizeFile > maxMessageSize) {
-        alert("File is too large! Max size is 5MB.");
-        return;
-      }
-      json.file_type = name.name.split(".")[1];
-      json.file_data = base64;
+  let file = getFile();
+  console.log(file);
+  if (file != null) {
+    if (file.size > maxMessageSize) {
+      alert("File is too large! Max size is 5MB.");
+      return;
     }
-    emit("message", json);
-  });
+    json.file_type = file.name;
+  }
+  emit("message", json);
 }
 
 if (
@@ -208,6 +216,12 @@ if (
 } else {
   listenMsg();
 }
+
+async function handler() {
+  let filepath = await open();
+  console.log(filepath);
+}
+handler();
 window.addEventListener("DOMContentLoaded", () => {
   messageInputEl = document.querySelector("#message-input");
   messages = document.getElementById("messages");
