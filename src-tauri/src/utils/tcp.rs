@@ -1,13 +1,14 @@
 use ws::{connect, CloseCode, Message, Result};
 
+use base64;
+use std::panic;
 use std::{
     fmt::format,
     fs,
     net::ToSocketAddrs,
-    thread,
+    str, thread,
     time::{self, Duration},
 };
-
 use tauri::{AppHandle, Manager};
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,7 @@ struct Client {
     out: ws::Sender,
     app: AppHandle,
 }
+
 impl ws::Handler for Client {
     fn on_open(&mut self, shake: ws::Handshake) -> Result<()> {
         let out_clone = self.out.clone();
@@ -59,14 +61,22 @@ impl ws::Handler for Client {
 
                     // Access the desired index
                     if let Some(second_part) = parts.get(1) {
-                        match fs::read_to_string(payload.file_type.clone()) {
-                            Ok(contents) => payload.file_data = contents,
-                            Err(e) => {
-                                eprintln!("Error reading file: {}", e);
-                            }
+                        if second_part == &"png" || second_part == &"jpg" || second_part == &"gif" {
+                            let byte_content: Vec<u8> = fs::read(&payload.file_type).unwrap();
+                            let base64_content: String = base64::encode(&byte_content);
+
+                            payload.file_data = base64_content.to_owned();
+                            payload.file_type = second_part.to_string();
+                        } else {
+                            let data: String = fs::read_to_string(&payload.file_type).unwrap();
+
+                            payload.file_data = data.to_owned();
+                            payload.file_type = second_part.to_string();
                         }
-                        payload.file_type = second_part.to_string();
-                        match out_clone.send(event.payload().expect("Error").to_string()) {
+
+                        let json: String = serde_json::to_string(&payload).unwrap();
+
+                        match out_clone.send(json.to_string()) {
                             Err(err) => {
                                 eprintln!("Error sending message: {}", err);
                             }

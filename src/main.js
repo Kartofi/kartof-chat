@@ -135,9 +135,9 @@ function formatMessageHtml(json) {
     case "jpg":
     case "gif":
       if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img src="${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img src="data:image/png;base64, ${json.file_data}"></a>`;
       } else {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img src="${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img src="data:image/png;base64, ${json.file_data}"></a>`;
       }
 
       break;
@@ -162,6 +162,7 @@ function formatMessageHtml(json) {
         }")">file.${json.file_type} (${sizeOfString(
           json.file_data
         )})</button><br></a>`;
+        console.log(element);
       }
 
       break;
@@ -170,13 +171,9 @@ function formatMessageHtml(json) {
   return element;
 }
 
-function getFile() {
-  var fileInput = document.getElementById("fileInput");
-  if (fileInput.files.length == 0) {
-    return null;
-  }
-  var file = fileInput.files[0];
-  return file;
+async function getFile() {
+  let filepath = await open();
+  return filepath;
 }
 
 async function sendMessage() {
@@ -196,15 +193,11 @@ async function sendMessage() {
     alert("Message is too large");
     return;
   }
-  let file = getFile();
-  console.log(file);
+  let file = await getFile();
   if (file != null) {
-    if (file.size > maxMessageSize) {
-      alert("File is too large! Max size is 5MB.");
-      return;
-    }
-    json.file_type = file.name;
+    json.file_type = file;
   }
+  console.log(json);
   emit("message", json);
 }
 
@@ -217,11 +210,6 @@ if (
   listenMsg();
 }
 
-async function handler() {
-  let filepath = await open();
-  console.log(filepath);
-}
-handler();
 window.addEventListener("DOMContentLoaded", () => {
   messageInputEl = document.querySelector("#message-input");
   messages = document.getElementById("messages");
