@@ -28,14 +28,19 @@ struct Client {
     app: AppHandle,
 }
 
+static MAX_MESSAGE_SIZE: usize = 5 * 1024 * 1024;
+
 impl ws::Handler for Client {
     fn on_open(&mut self, shake: ws::Handshake) -> Result<()> {
         let out_clone = self.out.clone();
 
-        let out_clone2 = self.out.clone();
+        let app_clone = self.app.clone();
 
         self.app.listen_global("message", move |event| {
             let json: Value = serde_json::from_str(event.payload().unwrap()).unwrap();
+
+            app_clone.emit_all("message_cooldown", true).unwrap();
+
             if let Some(field) = json.get("request") {
                 match out_clone.send("{\"request\":\"get_name\"}") {
                     Err(err) => {
@@ -45,9 +50,13 @@ impl ws::Handler for Client {
                         println!("Sent message");
                     }
                 }
+                app_clone
+                    .clone()
+                    .emit_all("message_cooldown", false)
+                    .unwrap();
             } else {
                 let mut payload: Payload = serde_json::from_str(event.payload().unwrap()).unwrap();
-                if payload.file_type == "" {
+                if payload.file_type == "" || payload.file_type == "plainText" {
                     match out_clone.send(event.payload().expect("Error").to_string()) {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
@@ -60,19 +69,24 @@ impl ws::Handler for Client {
                     let parts: Vec<&str> = payload.file_type.split(".").collect();
 
                     // Access the desired index
-                    if let Some(second_part) = parts.get(1) {
-                        if second_part == &"png" || second_part == &"jpg" || second_part == &"gif" {
-                            let byte_content: Vec<u8> = fs::read(&payload.file_type).unwrap();
-                            let base64_content: String = base64::encode(&byte_content);
-
-                            payload.file_data = base64_content.to_owned();
-                            payload.file_type = second_part.to_string();
-                        } else {
-                            let data: String = fs::read_to_string(&payload.file_type).unwrap();
-
-                            payload.file_data = data.to_owned();
-                            payload.file_type = second_part.to_string();
+                    if let Some(last_part) = parts.get(parts.len()-1) {
+                        let byte_content: Vec<u8> = fs::read(&payload.file_type).unwrap();
+                        let base64_content: String = base64::encode(&byte_content);
+                        if base64_content.len() > MAX_MESSAGE_SIZE {
+                            app_clone
+                                .emit_all(
+                                    "client_error",
+                                    "Max file size is 5MB and yours is larger!",
+                                )
+                                .unwrap();
+                            app_clone
+                                .clone()
+                                .emit_all("message_cooldown", false)
+                                .unwrap();
+                            return;
                         }
+                        payload.file_data = base64_content.to_owned();
+                        payload.file_type = last_part.to_string();
 
                         let json: String = serde_json::to_string(&payload).unwrap();
 
@@ -88,11 +102,15 @@ impl ws::Handler for Client {
                         println!("Error");
                     }
                 }
+                app_clone
+                    .clone()
+                    .emit_all("message_cooldown", false)
+                    .unwrap();
             }
         });
-        self.app.listen_global("close_tcp", move |event| {
+        /*  self.app.listen_global("close_tcp", move |event| {
             out_clone2.close(CloseCode::Normal).unwrap();
-        });
+        });*/
         Ok(())
     }
     fn on_error(&mut self, err: ws::Error) {}

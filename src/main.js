@@ -1,13 +1,17 @@
 const { invoke } = window.__TAURI__.tauri;
 const { listen, emit } = window.__TAURI__.event;
 const { open, save } = window.__TAURI__.dialog;
+const { stat } = window.__TAURI__.fs;
 
 let messageInputEl;
 let messages;
+let fileInput;
 
 let maxMessages = 50;
-let maxMessageSize = 5000000;
+let maxMessageSize = 5 * 1024 * 1024;
 let maxTextLength = 100;
+
+let message_cooldown = false;
 
 async function connect() {
   listenMsg();
@@ -47,7 +51,18 @@ async function listenMsg() {
     document.getElementById("client_name").innerHTML =
       "Your name is " + text.payload;
   });
-
+  const message_cooldown_listen = await listen(
+    "message_cooldown",
+    async (p) => {
+      let data = await p;
+      console.log(data.payload);
+      message_cooldown = data.payload;
+    }
+  );
+  const error_listen = await listen("client_error", async (p) => {
+    let data = await p;
+    alert(data.payload);
+  });
   emit("message", {
     request: "get_name",
   });
@@ -114,9 +129,9 @@ function formatMessageHtml(json) {
       if (json.message.length > maxTextLength) {
         element = `<a class="message">👤${
           json.from
-        } 🕛${date_text} : <button onclick="download("message.txt","${
+        } 🕛${date_text} : <button onclick="download('message.txt','${
           json.message
-        }")">file.txt (${sizeOfString(json.message)})</button><br></a>`;
+        }')">file.txt (${sizeOfString(json.message)})</button><br></a>`;
       } else {
         element =
           "<a class='message'>" +
@@ -145,21 +160,21 @@ function formatMessageHtml(json) {
       if (json.message.length > maxTextLength) {
         element = `<a class="message">👤${
           json.from
-        } 🕛${date_text} : <br> <button onclick="download("message.txt","${
+        } 🕛${date_text} : <br> <button onclick="download('message.txt','${
           json.message
-        }")">messsage.txt (${sizeOfString(
+        }')">messsage.txt (${sizeOfString(
           json.message
-        )})</button><button onclick="download("file.${json.file_type}","${
-          json.file_data
-        }")">file.${json.file_type} (${sizeOfString(
-          json.message
-        )})</button><br></a>`;
+        )})</button><button onclick="download('file.${
+          json.file_type
+        }','${escapeHtml(json.file_data)}')">file.${
+          json.file_type
+        } (${sizeOfString(json.file_data)})</button><br></a>`;
       } else {
         element = `<a class="message">👤${json.from} 🕛${date_text} : ${
           json.message
-        } <br><button onclick="download("file.${json.file_type}","${
+        } <br><button onclick="download('file.${json.file_type}','${escapeHtml(
           json.file_data
-        }")">file.${json.file_type} (${sizeOfString(
+        )}')">file.${json.file_type} (${sizeOfString(
           json.file_data
         )})</button><br></a>`;
         console.log(element);
@@ -171,13 +186,26 @@ function formatMessageHtml(json) {
   return element;
 }
 
+let selectedFilePath = null;
+
 async function getFile() {
-  let filepath = await open();
+  let filepath = await open({
+    title: "Select file - Max size 5MB",
+    multiple: false,
+  });
+
+  selectedFilePath = filepath;
+  fileInput.innerHTML = filepath;
   return filepath;
 }
 
 async function sendMessage() {
-  if (messageInputEl.value.length <= 0) {
+  if (message_cooldown == true) {
+    alert("Please wait for the last message to be send.");
+    return;
+  }
+  if (messageInputEl.value.length <= 0 && selectedFilePath == null) {
+    alert("Enter something in the text box or select file to send!");
     return;
   }
   let json = {
@@ -193,11 +221,12 @@ async function sendMessage() {
     alert("Message is too large");
     return;
   }
-  let file = await getFile();
-  if (file != null) {
-    json.file_type = file;
+  if (selectedFilePath != null) {
+    json.file_type = selectedFilePath;
+    selectedFilePath = null;
+    fileInput.innerHTML = "Click to select file";
   }
-  console.log(json);
+  messageInputEl.value = "";
   emit("message", json);
 }
 
@@ -213,6 +242,8 @@ if (
 window.addEventListener("DOMContentLoaded", () => {
   messageInputEl = document.querySelector("#message-input");
   messages = document.getElementById("messages");
+  fileInput = document.getElementById("fileInput");
+
   document.querySelector("#chat-form").addEventListener("submit", (e) => {
     e.preventDefault();
     sendMessage();
