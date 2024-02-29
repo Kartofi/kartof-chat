@@ -15,14 +15,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Clone, Serialize, Deserialize)]
-struct Payload {
+struct ClientMessage {
     from: String,
     message: String,
     file_data: String,
     file_type: String,
     time: u64,
 }
-
+#[derive(Clone, Serialize, Deserialize)]
+struct Request {
+    request: String,
+    name: String,
+    users: Vec<String>,
+}
 struct Client {
     out: ws::Sender,
     app: AppHandle,
@@ -42,12 +47,14 @@ impl ws::Handler for Client {
             app_clone.emit_all("message_cooldown", true).unwrap();
 
             if let Some(field) = json.get("request") {
-                match out_clone.send("{\"request\":\"get_name\"}") {
-                    Err(err) => {
-                        eprintln!("Error sending message: {}", err);
-                    }
-                    Ok(()) => {
-                        println!("Sent message");
+                if field == "get_name" {
+                    match out_clone.send("{\"request\":\"get_name\"}") {
+                        Err(err) => {
+                            eprintln!("Error sending message: {}", err);
+                        }
+                        Ok(()) => {
+                            println!("Sent message");
+                        }
                     }
                 }
                 app_clone
@@ -55,8 +62,9 @@ impl ws::Handler for Client {
                     .emit_all("message_cooldown", false)
                     .unwrap();
             } else {
-                let mut payload: Payload = serde_json::from_str(event.payload().unwrap()).unwrap();
-                if payload.file_type == "" || payload.file_type == "plainText" {
+                let mut message: ClientMessage =
+                    serde_json::from_str(event.payload().unwrap()).unwrap();
+                if message.file_type == "" || message.file_type == "plainText" {
                     match out_clone.send(event.payload().expect("Error").to_string()) {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
@@ -66,11 +74,11 @@ impl ws::Handler for Client {
                         }
                     }
                 } else {
-                    let parts: Vec<&str> = payload.file_type.split(".").collect();
+                    let parts: Vec<&str> = message.file_type.split(".").collect();
 
                     // Access the desired index
-                    if let Some(last_part) = parts.get(parts.len()-1) {
-                        let byte_content: Vec<u8> = fs::read(&payload.file_type).unwrap();
+                    if let Some(last_part) = parts.get(parts.len() - 1) {
+                        let byte_content: Vec<u8> = fs::read(&message.file_type).unwrap();
                         let base64_content: String = base64::encode(&byte_content);
                         if base64_content.len() > MAX_MESSAGE_SIZE {
                             app_clone
@@ -85,10 +93,10 @@ impl ws::Handler for Client {
                                 .unwrap();
                             return;
                         }
-                        payload.file_data = base64_content.to_owned();
-                        payload.file_type = last_part.to_string();
+                        message.file_data = base64_content.to_owned();
+                        message.file_type = last_part.to_string();
 
-                        let json: String = serde_json::to_string(&payload).unwrap();
+                        let json: String = serde_json::to_string(&message).unwrap();
 
                         match out_clone.send(json.to_string()) {
                             Err(err) => {
@@ -116,10 +124,15 @@ impl ws::Handler for Client {
     fn on_error(&mut self, err: ws::Error) {}
     fn on_message(&mut self, msg: Message) -> Result<()> {
         let string_msg: String = msg.to_string();
-        if string_msg.contains("{") == false {
-            self.app
-                .emit_all("client_name", string_msg.clone())
-                .unwrap();
+
+        let json_message: Value = serde_json::from_str(&string_msg).unwrap();
+
+        if let Some(field) = json_message.get("request") {
+            if field == "get_name" {
+                self.app
+                    .emit_all("client_name", string_msg.clone())
+                    .unwrap();
+            }
         } else {
             println!("Got message");
             self.app

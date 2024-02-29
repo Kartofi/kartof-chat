@@ -7,11 +7,16 @@ let messageInputEl;
 let messages;
 let fileInput;
 
+let clientNameEl;
+let connectedClientEl;
+
 let maxMessages = 50;
 let maxMessageSize = 5 * 1024 * 1024;
 let maxTextLength = 100;
 
 let message_cooldown = false;
+let users = [];
+let clientName = null;
 
 async function connect() {
   listenMsg();
@@ -48,8 +53,14 @@ async function listenMsg() {
 
   const client_name_listen = await listen("client_name", async (p) => {
     let text = await p;
-    document.getElementById("client_name").innerHTML =
-      "Your name is " + text.payload;
+    let data = JSON.parse(text.payload);
+
+    if (clientName == null) {
+      clientNameEl.innerHTML = "Your name is " + data.name;
+      clientName = data.name;
+    }
+    connectedClientEl.innerHTML = data.users.join("<br>");
+    console.log(data);
   });
   const message_cooldown_listen = await listen(
     "message_cooldown",
@@ -243,6 +254,9 @@ window.addEventListener("DOMContentLoaded", () => {
   messageInputEl = document.querySelector("#message-input");
   messages = document.getElementById("messages");
   fileInput = document.getElementById("fileInput");
+
+  clientNameEl = document.getElementById("client_name");
+  connectedClientEl = document.getElementById("connected_clients");
 
   document.querySelector("#chat-form").addEventListener("submit", (e) => {
     e.preventDefault();
