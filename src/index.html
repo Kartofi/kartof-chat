@@ -33,14 +33,18 @@
   <body>
     <div class="container">
       <a id="client_name">???</a>
-      <div style="overflow-y: scroll; height: 400px" id="messages"></div>
-      <br />
-      <form class="row" id="chat-form">
+      <div id="messages-container">
+        <div style="overflow-y: scroll" id="messages"></div>
+        <div id="connected_clients"></div>
+      </div>
+
+      <form id="chat-form">
+        <button type="button" id="fileInput" onclick="getFile()">
+          Click to select file
+        </button>
         <input id="message-input" placeholder="Enter a message..." />
         <button type="submit">Send</button>
       </form>
-      <button id="fileInput" onclick="getFile()">Click to select file</button>
-      <div id="connected_clients"></div>
     </div>
   </body>
 </html>

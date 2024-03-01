@@ -16,27 +16,11 @@
 
 .container {
   margin: 0;
-  padding-top: 10vh;
+  padding-top: 1vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
 }
 
 a {
@@ -79,30 +63,82 @@ input,
 button {
   outline: none;
 }
+#connected_clients {
+  float: left;
+  background-color: #222222;
 
+  max-width: 165px;
+  white-space: nowrap;
+
+  border-left-color: #ffffff;
+  border-left-width: 1px;
+  border-left-style: solid;
+
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+#messages-container {
+  display: flex;
+  clear: both;
+
+  border-color: rgb(114, 114, 114);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 10px;
+}
+#messages-container > div {
+  flex: 1;
+}
+#chat-form {
+  display: flex;
+  justify-content: center;
+
+  position: inherit;
+  margin-top: 10px;
+  bottom: 5px;
+  width: 100%;
+  align-self: center;
+}
+#fileInput {
+  max-width: 50vw;
+  white-space: initial;
+}
 #message-input {
+  font-size: 16px;
   margin-right: 5px;
+  margin-left: 5px;
+  width: 90vw;
 }
 #messages {
-  height: 100px;
+  height: 90vh;
+  float: left;
+
   background-color: #1b1b1b;
   display: block;
   word-wrap: break-word;
   text-align: left;
 
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgb(255, 255, 255);
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
 }
 img {
   width: 100%;
   max-width: 350px;
+  margin-left: 7.5px;
+
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
 }
 .message {
   background-color: #2f2f2f;
   padding: 1px 1px;
   margin: 5px 5px 5px 5px;
   display: block;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar {

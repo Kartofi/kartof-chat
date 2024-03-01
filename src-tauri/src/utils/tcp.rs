@@ -2,6 +2,7 @@ use ws::{connect, CloseCode, Message, Result};
 
 use base64;
 use std::panic;
+
 use std::{
     fmt::format,
     fs,
@@ -9,6 +10,7 @@ use std::{
     str, thread,
     time::{self, Duration},
 };
+
 use tauri::{AppHandle, Manager};
 
 use serde::{Deserialize, Serialize};
@@ -24,9 +26,13 @@ struct ClientMessage {
 }
 #[derive(Clone, Serialize, Deserialize)]
 struct Request {
-    request: String,
-    name: String,
-    users: Vec<String>,
+    request: RequestTypes,
+    name: Option<String>,
+    users: Option<Vec<String>>,
+}
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+enum RequestTypes {
+    GetName = 1,
 }
 struct Client {
     out: ws::Sender,
@@ -39,16 +45,18 @@ impl ws::Handler for Client {
     fn on_open(&mut self, shake: ws::Handshake) -> Result<()> {
         let out_clone = self.out.clone();
 
+        let out_clone2 = self.out.clone();
+
         let app_clone = self.app.clone();
+        let app_clone2 = self.app.clone();
 
-        self.app.listen_global("message", move |event| {
+        let message_listen = self.app.listen_global("message", move |event| {
             let json: Value = serde_json::from_str(event.payload().unwrap()).unwrap();
-
             app_clone.emit_all("message_cooldown", true).unwrap();
 
             if let Some(field) = json.get("request") {
-                if field == "get_name" {
-                    match out_clone.send("{\"request\":\"get_name\"}") {
+                if RequestTypes::GetName == RequestTypes::GetName {
+                    match out_clone.send("{\"request\":\"GetName\"}") {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
                         }
@@ -116,19 +124,24 @@ impl ws::Handler for Client {
                     .unwrap();
             }
         });
-        /*  self.app.listen_global("close_tcp", move |event| {
-            out_clone2.close(CloseCode::Normal).unwrap();
-        });*/
+        let close_tcp_listen = self.app.listen_global("close_tcp", move |event| {
+            out_clone2.close(CloseCode::Normal).unwrap_err();
+            app_clone2.unlisten(message_listen);
+        });
         Ok(())
     }
-    fn on_error(&mut self, err: ws::Error) {}
+    fn on_error(&mut self, err: ws::Error) {
+        self.app.emit_all("client_error", "reconnect").unwrap();
+    }
     fn on_message(&mut self, msg: Message) -> Result<()> {
         let string_msg: String = msg.to_string();
 
         let json_message: Value = serde_json::from_str(&string_msg).unwrap();
 
         if let Some(field) = json_message.get("request") {
-            if field == "get_name" {
+            let req: Request = serde_json::from_str(&msg.to_string()).expect("msg");
+
+            if req.request == RequestTypes::GetName {
                 self.app
                     .emit_all("client_name", string_msg.clone())
                     .unwrap();

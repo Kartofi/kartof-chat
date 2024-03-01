@@ -17,11 +17,15 @@ let maxTextLength = 100;
 let message_cooldown = false;
 let users = [];
 let clientName = null;
+let connected = false;
 
 async function connect() {
-  listenMsg();
+  if (connected == true) {
+    return;
+  }
+  emit("close_tcp", true);
   const res = await invoke("connect");
-  console.log(res);
+  connected = true;
 }
 function removeOldMessages() {
   let html = messages.innerHTML;
@@ -59,7 +63,8 @@ async function listenMsg() {
       clientNameEl.innerHTML = "Your name is " + data.name;
       clientName = data.name;
     }
-    connectedClientEl.innerHTML = data.users.join("<br>");
+    connectedClientEl.innerHTML =
+      data.users.length + " - users<br>👤" + data.users.join("<br>👤");
     console.log(data);
   });
   const message_cooldown_listen = await listen(
@@ -72,11 +77,26 @@ async function listenMsg() {
   );
   const error_listen = await listen("client_error", async (p) => {
     let data = await p;
-    alert(data.payload);
+    if (data.payload == "reconnect") {
+      connected = false;
+      clientName = null;
+      console.log("reconnect");
+      connect();
+    } else {
+      alert(data.payload);
+    }
   });
   emit("message", {
-    request: "get_name",
+    request: 1,
   });
+  let interval = setInterval(() => {
+    if (clientName == null) {
+      emit("message", {
+        request: 1,
+      });
+      interval();
+    }
+  }, 100);
 }
 function formatBytes(bytes, decimals = 2) {
   if (!+bytes) return "0 Bytes";
@@ -206,7 +226,8 @@ async function getFile() {
   });
 
   selectedFilePath = filepath;
-  fileInput.innerHTML = filepath;
+  let split = filepath.split("\\");
+  fileInput.innerHTML = split[split.length - 1];
   return filepath;
 }
 
@@ -245,6 +266,7 @@ if (
   window.performance.navigation.type !=
   window.performance.navigation.TYPE_RELOAD
 ) {
+  listenMsg();
   connect();
 } else {
   listenMsg();
