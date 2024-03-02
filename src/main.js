@@ -34,11 +34,15 @@ listen("tauri://file-drop", (event) => {
   selectedFilePath = event.payload[0];
   let parts = selectedFilePath.split("\\");
   fileInput.textContent = parts[parts.length - 1];
+
+  document.getElementById("file-drop-indicator").style.display = "none";
 });
 listen("tauri://file-drop-hover", (event) => {
+  document.getElementById("file-drop-indicator").style.display = "flex";
   draggingFile = true;
 });
 listen("tauri://file-drop-cancelled", (event) => {
+  document.getElementById("file-drop-indicator").style.display = "none";
   draggingFile = false;
 });
 function removeOldMessages() {
@@ -208,9 +212,9 @@ function formatMessageHtml(json) {
     case "jpg":
     case "gif":
       if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img src="data:image/png;base64, ${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img class="chat-img" src="data:image/png;base64, ${json.file_data}"></a>`;
       } else {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img src="data:image/png;base64, ${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img class="chat-img"  src="data:image/png;base64, ${json.file_data}"></a>`;
       }
 
       break;

@@ -39,13 +39,20 @@
       </div>
 
       <form id="chat-form">
-        <button type="reset">Reset</button>
+        <button type="reset">Clear</button>
         <button type="button" id="fileInput" onclick="getFile()">
           Click or drop your file
         </button>
         <input id="message-input" placeholder="Enter a message..." />
         <button type="submit">Send</button>
       </form>
+      <div id="file-drop-indicator">
+        <center>
+          <img src="./assets/chat-upload-line.svg" />
+          <br />
+          <a>Drop your file to attach it!</a>
+        </center>
+      </div>
     </div>
   </body>
 </html>
