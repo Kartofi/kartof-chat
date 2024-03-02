@@ -39,7 +39,7 @@ struct Client {
     app: AppHandle,
 }
 
-static MAX_MESSAGE_SIZE: usize = 5 * 1024 * 1024;
+static MAX_MESSAGE_SIZE: u64 = 5 * 1024 * 1024;
 
 impl ws::Handler for Client {
     fn on_open(&mut self, shake: ws::Handshake) -> Result<()> {
@@ -72,6 +72,7 @@ impl ws::Handler for Client {
             } else {
                 let mut message: ClientMessage =
                     serde_json::from_str(event.payload().unwrap()).unwrap();
+
                 if message.file_type == "" || message.file_type == "plainText" {
                     match out_clone.send(event.payload().expect("Error").to_string()) {
                         Err(err) => {
@@ -84,11 +85,10 @@ impl ws::Handler for Client {
                 } else {
                     let parts: Vec<&str> = message.file_type.split(".").collect();
 
-                    // Access the desired index
                     if let Some(last_part) = parts.get(parts.len() - 1) {
-                        let byte_content: Vec<u8> = fs::read(&message.file_type).unwrap();
-                        let base64_content: String = base64::encode(&byte_content);
-                        if base64_content.len() > MAX_MESSAGE_SIZE {
+                        let metadata = fs::metadata(&message.file_type).expect("msg");
+
+                        if metadata.len() > MAX_MESSAGE_SIZE {
                             app_clone
                                 .emit_all(
                                     "client_error",
@@ -101,8 +101,19 @@ impl ws::Handler for Client {
                                 .unwrap();
                             return;
                         }
+
+                        let byte_content: Vec<u8> = fs::read(&message.file_type).unwrap();
+                        let base64_content: String = base64::encode(&byte_content);
+
                         message.file_data = base64_content.to_owned();
-                        message.file_type = last_part.to_string();
+
+                        let sections: Vec<&str> = message.file_type.split("\\").collect();
+
+                        if let Some(filename) = sections.get(sections.len() - 1) {
+                            message.file_type = filename.to_string().clone();
+                        } else {
+                            message.file_type = last_part.to_string().clone();
+                        }
 
                         let json: String = serde_json::to_string(&message).unwrap();
 

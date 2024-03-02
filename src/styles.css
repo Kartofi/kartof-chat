@@ -125,8 +125,8 @@ button {
   border-bottom-left-radius: 10px;
 }
 img {
-  width: 100%;
-  max-width: 350px;
+  max-height: 350px;
+  max-width: 90%;
   margin-left: 7.5px;
 
   -webkit-user-select: none; /* Safari */

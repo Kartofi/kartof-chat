@@ -18,6 +18,9 @@ let message_cooldown = false;
 let users = [];
 let clientName = null;
 let connected = false;
+let selectedFilePath = null;
+
+let draggingFile = false;
 
 async function connect() {
   if (connected == true) {
@@ -27,6 +30,17 @@ async function connect() {
   const res = await invoke("connect");
   connected = true;
 }
+listen("tauri://file-drop", (event) => {
+  selectedFilePath = event.payload[0];
+  let parts = selectedFilePath.split("\\");
+  fileInput.textContent = parts[parts.length - 1];
+});
+listen("tauri://file-drop-hover", (event) => {
+  draggingFile = true;
+});
+listen("tauri://file-drop-cancelled", (event) => {
+  draggingFile = false;
+});
 function removeOldMessages() {
   let html = messages.innerHTML;
   let count = html.split("<br>");
@@ -46,7 +60,7 @@ async function listenMsg() {
   const messages_listen = await listen("client_message", async (p) => {
     let json = await p;
     json = await JSON.parse(json.payload);
-
+    console.log(json);
     let element = formatMessageHtml(json);
 
     messages.innerHTML = messages.innerHTML + element;
@@ -94,7 +108,7 @@ async function listenMsg() {
       emit("message", {
         request: 1,
       });
-      interval();
+      clearInterval(interval);
     }
   }, 100);
 }
@@ -141,20 +155,33 @@ function escapeHtml(unsafe) {
   });
 }
 function formatMessageHtml(json) {
-  let date_text = new Date(json.time).toLocaleTimeString("en-US");
+  let date_text = new Date(json.time * 1000).toLocaleTimeString("en-US", {
+    hour12: false,
+  });
 
   let time = date_text.split(":");
   time = time[0] + ":" + time[1];
 
-  let pmAM = date_text.split(" ")[1];
-
-  date_text = time + " " + pmAM;
+  date_text = time;
 
   let element = "";
 
   json.message = escapeHtml(json.message);
+  if (json.file_type != "plainText") {
+    json.file_type = json.file_type.toLowerCase();
+  }
+  let fileExtension = json.file_type;
+  let fileName = json.file_type;
 
-  switch (json.file_type) {
+  if (fileExtension.includes(".")) {
+    let split = fileExtension.split(".");
+    fileName = json.file_type;
+    fileExtension = split[1];
+  } else {
+    fileName = "file." + fileExtension;
+  }
+
+  switch (fileExtension) {
     case "plainText":
     case "":
       if (json.message.length > maxTextLength) {
@@ -197,18 +224,15 @@ function formatMessageHtml(json) {
           json.message
         )})</button><button onclick="download('file.${
           json.file_type
-        }','${escapeHtml(json.file_data)}')">file.${
-          json.file_type
-        } (${sizeOfString(json.file_data)})</button><br></a>`;
+        }','${escapeHtml(json.file_data)}')">${fileName} (${sizeOfString(
+          json.file_data
+        )})</button><br></a>`;
       } else {
         element = `<a class="message">👤${json.from} 🕛${date_text} : ${
           json.message
-        } <br><button onclick="download('file.${json.file_type}','${escapeHtml(
+        } <br><button onclick="download('${fileName}','${escapeHtml(
           json.file_data
-        )}')">file.${json.file_type} (${sizeOfString(
-          json.file_data
-        )})</button><br></a>`;
-        console.log(element);
+        )}')">${fileName} (${sizeOfString(json.file_data)})</button><br></a>`;
       }
 
       break;
@@ -216,8 +240,6 @@ function formatMessageHtml(json) {
 
   return element;
 }
-
-let selectedFilePath = null;
 
 async function getFile() {
   let filepath = await open({
@@ -256,7 +278,7 @@ async function sendMessage() {
   if (selectedFilePath != null) {
     json.file_type = selectedFilePath;
     selectedFilePath = null;
-    fileInput.innerHTML = "Click to select file";
+    fileInput.innerHTML = "Click or drop your file";
   }
   messageInputEl.value = "";
   emit("message", json);
