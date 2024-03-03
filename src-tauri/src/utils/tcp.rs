@@ -3,6 +3,8 @@ use ws::{connect, CloseCode, Message, Result};
 use base64;
 use std::panic;
 
+use crate::utils::data_processing;
+
 use std::{
     fmt::format,
     fs,
@@ -15,6 +17,8 @@ use tauri::{AppHandle, Manager};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use super::data_processing::compress;
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ClientMessage {

@@ -15,6 +15,10 @@ fn connect(window: Window, app: AppHandle) -> Result<(), String> {
     //window.unlisten("connect");
 }
 fn main() {
+    match utils::data_processing::compress("hello how are you") {
+        Ok(data) => println!("{}", data),
+        Err(err) => println!("NOOOOOOOOOO"),
+    }
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![connect])
         .run(tauri::generate_context!())
