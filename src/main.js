@@ -212,9 +212,9 @@ function formatMessageHtml(json) {
     case "jpg":
     case "gif":
       if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img class="chat-img" src="data:image/png;base64, ${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img class="chat-img" draggable="false" src="data:image/png;base64, ${json.file_data}"></a>`;
       } else {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img class="chat-img"  src="data:image/png;base64, ${json.file_data}"></a>`;
+        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img class="chat-img" draggable="false"  src="data:image/png;base64, ${json.file_data}"></a>`;
       }
 
       break;

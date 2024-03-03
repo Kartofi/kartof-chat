@@ -3,8 +3,6 @@ use ws::{connect, CloseCode, Message, Result};
 use base64;
 use std::panic;
 
-use crate::utils::data_processing;
-
 use std::{
     fmt::format,
     fs,
@@ -18,7 +16,7 @@ use tauri::{AppHandle, Manager};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::data_processing::compress;
+use super::data_processing::{compress, decompress};
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ClientMessage {
@@ -60,7 +58,10 @@ impl ws::Handler for Client {
 
             if let Some(field) = json.get("request") {
                 if RequestTypes::GetName == RequestTypes::GetName {
-                    match out_clone.send("{\"request\":\"GetName\"}") {
+
+                    let compressed: String = compress("{\"request\":\"GetName\"}").unwrap();
+                    println!("{}",compressed);
+                    match out_clone.send(compressed) {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
                         }
@@ -75,10 +76,12 @@ impl ws::Handler for Client {
                     .unwrap();
             } else {
                 let mut message: ClientMessage =
-                    serde_json::from_str(event.payload().unwrap()).unwrap();
+                    serde_json::from_str(&event.payload().unwrap()).unwrap();
 
                 if message.file_type == "" || message.file_type == "plainText" {
-                    match out_clone.send(event.payload().expect("Error").to_string()) {
+                    let compressed: String =
+                        compress(&event.payload().expect("Error").to_string()).unwrap();
+                    match out_clone.send(compressed.clone()) {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
                         }
@@ -121,7 +124,9 @@ impl ws::Handler for Client {
 
                         let json: String = serde_json::to_string(&message).unwrap();
 
-                        match out_clone.send(json.to_string()) {
+                        let compressed: String = compress(&json).unwrap();
+
+                        match out_clone.send(compressed) {
                             Err(err) => {
                                 eprintln!("Error sending message: {}", err);
                             }
@@ -151,20 +156,38 @@ impl ws::Handler for Client {
     fn on_message(&mut self, msg: Message) -> Result<()> {
         let string_msg: String = msg.to_string();
 
-        let json_message: Value = serde_json::from_str(&string_msg).unwrap();
+        let compressed_bytes: Vec<u8> = match base64::decode(string_msg) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                eprintln!("Base64 decoding error: {}", e);
+                Vec::new() // Exit the function if decoding fails
+            }
+        };
+        if compressed_bytes.len() == 0 {
+            println!("Invalid compressed data!");
+            return Ok(());
+        }
+        let decompressed_result: std::prelude::v1::Result<String, std::io::Error> =
+            decompress(&compressed_bytes);
+        let decompressed: String = match decompressed_result {
+            Ok(data) => data,
+            Err(error) => String::default(),
+        };
+
+        let json_message: Value = serde_json::from_str(&decompressed).unwrap();
 
         if let Some(field) = json_message.get("request") {
-            let req: Request = serde_json::from_str(&msg.to_string()).expect("msg");
+            let req: Request = serde_json::from_str(&decompressed).expect("msg");
 
             if req.request == RequestTypes::GetName {
                 self.app
-                    .emit_all("client_name", string_msg.clone())
+                    .emit_all("client_name", decompressed.clone())
                     .unwrap();
             }
         } else {
             println!("Got message");
             self.app
-                .emit_all("client_message", string_msg.clone())
+                .emit_all("client_message", decompressed.clone())
                 .unwrap();
         }
         Ok(())
