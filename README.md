@@ -4,7 +4,7 @@
 <br>
 <b>Kartof Chat</b> is an anonymous chat platform where users can send any type of files and messages are not saved.
 <br><br>
-<b>Server - [HERE](https://github.com/Kartofi/kartof-chat-server)
+<b>Server - https://github.com/Kartofi/kartof-chat-server
 
 ## Recommended IDE Setup
 
