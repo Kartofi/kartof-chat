@@ -6,6 +6,8 @@
 <br><br>
 <b>Server - https://github.com/Kartofi/kartof-chat-server
 
+<p aling="center"><img width="600px" src="./imgs/screenshot.png"></p>
+
 ## Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
