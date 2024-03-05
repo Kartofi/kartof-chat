@@ -1,6 +1,6 @@
 <center><b><h1>Kartof Chat</h1></b></center>
 
-<p align="center"><img width="300px" src="./imgs/icon.png"></p>p>
+<p align="center"><img width="300px" src="./imgs/icon.png"></p>
 <br>
 <b>Kartof Chat</b> is an anonymous chat platform where users can send any type of files and messages are not saved.
 <br><br>
