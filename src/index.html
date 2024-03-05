@@ -32,20 +32,33 @@
   </script>
   <body>
     <div class="container">
-      <a id="client_name">???</a>
       <div id="messages-container">
         <div style="overflow-y: scroll" id="messages"></div>
         <div id="connected_clients"></div>
       </div>
 
       <form id="chat-form">
-        <button type="reset">Clear</button>
+        <button type="reset" onclick="clearForm()">Clear</button>
         <button type="button" id="fileInput" onclick="getFile()">
           Click or drop your file
         </button>
         <input id="message-input" placeholder="Enter a message..." />
-        <button type="submit">Send</button>
+        <button type="submit" style="margin-right: 10px" id="sendMessage">
+          Send
+        </button>
       </form>
+      <div id="image-viewer">
+        <div
+          style="width: 100vw; height: 100vh"
+          onclick="closeImageView()"
+        ></div>
+        <img id="image-viewer-image" src="./assets/chat-upload-line.svg" />
+        <img
+          src="./assets/close.svg"
+          id="close-image-viewer"
+          onclick="closeImageView()"
+        />
+      </div>
       <div id="file-drop-indicator">
         <center>
           <img src="./assets/chat-upload-line.svg" />

@@ -6,13 +6,17 @@ const { stat } = window.__TAURI__.fs;
 let messageInputEl;
 let messages;
 let fileInput;
+let sendMessageButton;
 
-let clientNameEl;
+let imageViewer;
+let imageViewerImage;
+
 let connectedClientEl;
 
 let maxMessages = 50;
 let maxMessageSize = 5 * 1024 * 1024;
-let maxTextLength = 100;
+let maxTextLength = 500;
+let maxfileNameShow = 20;
 
 let message_cooldown = false;
 let users = [];
@@ -31,13 +35,25 @@ async function connect() {
   connected = true;
 }
 listen("tauri://file-drop", (event) => {
+  document.getElementById("file-drop-indicator").style.display = "none";
+  draggingFile = false;
+
   selectedFilePath = event.payload[0];
   let parts = selectedFilePath.split("\\");
-  fileInput.textContent = parts[parts.length - 1];
+
+  let name = parts[parts.length - 1];
+  if (name.length > maxfileNameShow) {
+    name = name.slice(0, maxfileNameShow - 1) + "...";
+  }
+  fileInput.textContent = name;
 
   document.getElementById("file-drop-indicator").style.display = "none";
 });
 listen("tauri://file-drop-hover", (event) => {
+  if (event.payload.length == 0) {
+    return;
+  }
+
   document.getElementById("file-drop-indicator").style.display = "flex";
   draggingFile = true;
 });
@@ -46,19 +62,14 @@ listen("tauri://file-drop-cancelled", (event) => {
   draggingFile = false;
 });
 function removeOldMessages() {
-  let html = messages.innerHTML;
-  let count = html.split("<br>");
-
-  let countCount = count.length;
+  let countCount = messages.children.length;
   let toRemove = countCount - maxMessages;
 
   if (toRemove > 0) {
     for (let index = 0; index < toRemove; index++) {
-      count.splice(0, 1);
+      messages.removeChild(messages.firstElementChild);
     }
-    return count.join("<br>");
   }
-  return html;
 }
 async function listenMsg() {
   const messages_listen = await listen("client_message", async (p) => {
@@ -67,8 +78,9 @@ async function listenMsg() {
     console.log(json);
     let element = formatMessageHtml(json);
 
-    messages.innerHTML = messages.innerHTML + element;
-    messages.innerHTML = removeOldMessages();
+    messages.insertAdjacentHTML("beforeend", element);
+    removeOldMessages();
+
     messages.scrollTop = messages.scrollHeight;
     console.log(`Got message from ` + json.from + " !");
   });
@@ -78,8 +90,12 @@ async function listenMsg() {
     let data = JSON.parse(text.payload);
 
     if (clientName == null) {
-      clientNameEl.innerHTML = "Your name is " + data.name;
       clientName = data.name;
+    }
+    for (let index = 0; index < data.users.length; index++) {
+      if (data.users[index] == clientName) {
+        data.users[index] += " - (YOU)";
+      }
     }
     connectedClientEl.innerHTML =
       data.users.length + " - users<br>👤" + data.users.join("<br>👤");
@@ -171,77 +187,67 @@ function formatMessageHtml(json) {
   let element = "";
 
   json.message = escapeHtml(json.message);
-  if (json.file_type != "plainText") {
-    json.file_type = json.file_type.toLowerCase();
-  }
+
   let fileExtension = json.file_type;
   let fileName = json.file_type;
 
   if (fileExtension.includes(".")) {
     let split = fileExtension.split(".");
     fileName = json.file_type;
-    fileExtension = split[1];
+    fileExtension = split[1].toLowerCase();
   } else {
     fileName = "file." + fileExtension;
+  }
+
+  element = `<a class="message">👤${json.from} 🕛${date_text} : `;
+
+  if (json.message.length > maxTextLength) {
+    element += `<br> <button class="download-button" onclick="download('message.txt','${
+      json.message
+    }')">messsage.txt (${sizeOfString(json.message)})</button>`;
+  } else {
+    element += `${json.message}<br>`;
   }
 
   switch (fileExtension) {
     case "plainText":
     case "":
-      if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${
-          json.from
-        } 🕛${date_text} : <button onclick="download('message.txt','${
-          json.message
-        }')">file.txt (${sizeOfString(json.message)})</button><br></a>`;
-      } else {
-        element =
-          "<a class='message'>" +
-          "👤" +
-          json.from +
-          " 🕛" +
-          date_text +
-          " : " +
-          json.message +
-          "<br>" +
-          "</a>";
-      }
-
       break;
     case "png":
     case "jpg":
     case "gif":
+    case "jpeg":
       if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : <button onclick="download("message.txt","${json.message}")"</button><br><img class="chat-img" draggable="false" src="data:image/png;base64, ${json.file_data}"></a>`;
-      } else {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : ${json.message}<br><img class="chat-img" draggable="false"  src="data:image/png;base64, ${json.file_data}"></a>`;
+        element += "<br>";
       }
+      element += `<img class="chat-img" draggable="false" onclick="openImageView('data:image/png;base64, ${json.file_data}')"  src="data:image/png;base64, ${json.file_data}">`;
+
+      break;
+    case "mp4":
+      if (json.message.length > maxTextLength) {
+        element += "<br><br>";
+      }
+      element += `<video  controls> <source src="data:video/webm;base64,${json.file_data}" type="video/mp4"></video>`;
+
+      break;
+    case "mp3":
+    case "m4a":
+      if (json.message.length > maxTextLength) {
+        element += "<br><br>";
+      }
+      element += `<audio  controls> <source src="data:audio/mp3;base64,${json.file_data}" type="audio/mp3"></audio>`;
 
       break;
     default:
-      if (json.message.length > maxTextLength) {
-        element = `<a class="message">👤${
-          json.from
-        } 🕛${date_text} : <br> <button onclick="download('message.txt','${
-          json.message
-        }')">messsage.txt (${sizeOfString(
-          json.message
-        )})</button><button onclick="download('file.${
-          json.file_type
-        }','${escapeHtml(json.file_data)}')">${fileName} (${sizeOfString(
-          json.file_data
-        )})</button><br></a>`;
-      } else {
-        element = `<a class="message">👤${json.from} 🕛${date_text} : ${
-          json.message
-        } <br><button onclick="download('${fileName}','${escapeHtml(
-          json.file_data
-        )}')">${fileName} (${sizeOfString(json.file_data)})</button><br></a>`;
-      }
+      element += `<button class="download-button" onclick="download('file.${
+        json.file_type
+      }','${escapeHtml(json.file_data)}')">${fileName} (${sizeOfString(
+        json.file_data
+      )})</button><br>`;
 
       break;
   }
-
+  element += "</a>";
   return element;
 }
 
@@ -253,10 +259,26 @@ async function getFile() {
 
   selectedFilePath = filepath;
   let split = filepath.split("\\");
-  fileInput.innerHTML = split[split.length - 1];
+
+  let name = split[split.length - 1];
+  if (name.length > maxfileNameShow) {
+    name = name.slice(0, maxfileNameShow - 1) + "...";
+  }
+
+  fileInput.textContent = name;
   return filepath;
 }
-
+function clearForm() {
+  fileInput.textContent = "Click or drop your file";
+  selectedFilePath = null;
+}
+function closeImageView() {
+  imageViewer.style.display = "none";
+}
+function openImageView(base64Image) {
+  imageViewerImage.src = base64Image;
+  imageViewer.style.display = "flex";
+}
 async function sendMessage() {
   if (message_cooldown == true) {
     alert("Please wait for the last message to be send.");
@@ -285,7 +307,14 @@ async function sendMessage() {
     fileInput.innerHTML = "Click or drop your file";
   }
   messageInputEl.value = "";
-  emit("message", json);
+  await emit("message", json);
+  sendMessageButton.textContent = "Sending...";
+  let inteval = setInterval(function () {
+    if (message_cooldown == false) {
+      clearInterval(inteval);
+      sendMessageButton.textContent = "Send";
+    }
+  }, 10);
 }
 
 if (
@@ -302,9 +331,12 @@ window.addEventListener("DOMContentLoaded", () => {
   messageInputEl = document.querySelector("#message-input");
   messages = document.getElementById("messages");
   fileInput = document.getElementById("fileInput");
+  sendMessageButton = document.getElementById("sendMessage");
 
-  clientNameEl = document.getElementById("client_name");
   connectedClientEl = document.getElementById("connected_clients");
+
+  imageViewer = document.getElementById("image-viewer");
+  imageViewerImage = document.getElementById("image-viewer-image");
 
   document.querySelector("#chat-form").addEventListener("submit", (e) => {
     e.preventDefault();

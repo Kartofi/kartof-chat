@@ -10,17 +10,12 @@ use tauri::{AppHandle, Manager, Window};
 #[tauri::command]
 fn connect(window: Window, app: AppHandle) -> Result<(), String> {
     app.emit_all("close_tcp", "").unwrap();
-    utils::tcp::handle_websockets(app);
+    utils::tcp::handle_websockets(app,"ws://127.0.0.1:3012".to_string());
     Ok(())
     //window.unlisten("connect");
 }
 
 fn main() {
-    let da: String = match utils::data_processing::compress("hello how are you") {
-        Ok(data) => data,
-        Err(err) => String::default(),
-    };
-
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![connect])
         .run(tauri::generate_context!())

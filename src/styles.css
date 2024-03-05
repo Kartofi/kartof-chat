@@ -16,11 +16,12 @@
 
 .container {
   margin: 0;
-  padding-top: 1vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
+
+  position: fixed;
 }
 
 a {
@@ -70,7 +71,7 @@ button {
   max-width: 165px;
   white-space: nowrap;
 
-  border-left-color: #ffffff;
+  border-left-color: rgb(114, 114, 114);
   border-left-width: 1px;
   border-left-style: solid;
 
@@ -81,6 +82,12 @@ button {
   border-bottom-right-radius: 10px;
 }
 #messages-container {
+  position: fixed;
+  left: 5px;
+  right: 5px;
+  bottom: 60px;
+  top: 5px;
+
   display: flex;
   clear: both;
 
@@ -92,18 +99,30 @@ button {
 #messages-container > div {
   flex: 1;
 }
+#client_name {
+  margin-top: 0px;
+}
 #chat-form {
+  position: inherit;
+  left: 0px;
+  margin-left: 5px;
+  margin-right: 5px;
+
   display: flex;
   justify-content: center;
 
-  position: inherit;
+  height: 50px;
+
+  position: fixed;
   margin-top: 10px;
   bottom: 5px;
   width: 100%;
   align-self: center;
 }
+
 #fileInput {
-  max-width: 50vw;
+  max-width: 40%;
+  min-width: fit-content;
   margin-left: 5px;
   white-space: initial;
 }
@@ -111,10 +130,9 @@ button {
   font-size: 16px;
   margin-right: 5px;
   margin-left: 5px;
-  width: 90vw;
+  width: 90%;
 }
 #messages {
-  height: 90vh;
   float: left;
 
   background-color: #1b1b1b;
@@ -125,9 +143,62 @@ button {
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
 }
+#image-viewer {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 
+  z-index: 2;
+
+  align-self: center;
+
+  display: none;
+
+  background-color: rgba(0, 0, 0, 0.808);
+  width: 100vw;
+  height: 100vh;
+}
+#image-viewer-image {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+
+  max-width: 90vw;
+  max-height: 90vh;
+}
+#close-image-viewer {
+  position: inherit;
+  right: 10px;
+  top: 10px;
+
+  filter: invert(59%) sepia(32%) saturate(7277%) hue-rotate(334deg)
+    brightness(102%) contrast(117%);
+  transition-duration: 0.1s;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+}
+#close-image-viewer:hover {
+  filter: invert(31%) sepia(38%) saturate(832%) hue-rotate(314deg)
+    brightness(103%) contrast(105%);
+
+  width: 50px;
+  height: 50px;
+
+  right: 5px;
+  top: 5px;
+
+  cursor: pointer;
+}
 #file-drop-indicator {
   position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
   z-index: 2;
 
   align-self: center;
@@ -153,11 +224,22 @@ button {
 .chat-img {
   max-height: 350px;
   max-width: 90%;
-  margin-left: 7.5px;
+  margin-left: 5px;
+  margin-top: 5px;
 
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
+  border-radius: 10px;
+
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.chat-img:hover {
+  cursor: pointer;
+}
+.download-button {
+  margin-left: 5px;
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
 .message {
   background-color: #2f2f2f;
@@ -165,6 +247,15 @@ button {
   margin: 5px 5px 5px 5px;
   display: block;
   border-radius: 5px;
+}
+video,
+audio {
+  margin-left: 5px;
+  margin-top: 5px;
+  border-radius: 10px;
+
+  max-height: 350px;
+  max-width: 90%;
 }
 
 ::-webkit-scrollbar {

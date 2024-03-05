@@ -43,6 +43,27 @@ struct Client {
 
 static MAX_MESSAGE_SIZE: u64 = 5 * 1024 * 1024;
 
+fn decompress_err_handle(string_msg: String) -> String {
+    let compressed_bytes: Vec<u8> = match base64::decode(string_msg) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("Base64 decoding error: {}", e);
+            Vec::new()
+        }
+    };
+    if compressed_bytes.len() == 0 {
+        println!("Invalid compressed data!");
+        return String::default();
+    }
+    let decompressed_result: std::prelude::v1::Result<String, std::io::Error> =
+        decompress(&compressed_bytes);
+    let decompressed: String = match decompressed_result {
+        Ok(data) => data,
+        Err(error) => String::default(),
+    };
+    return decompressed;
+}
+
 impl ws::Handler for Client {
     fn on_open(&mut self, shake: ws::Handshake) -> Result<()> {
         let out_clone = self.out.clone();
@@ -58,10 +79,7 @@ impl ws::Handler for Client {
 
             if let Some(field) = json.get("request") {
                 if RequestTypes::GetName == RequestTypes::GetName {
-
-                    let compressed: String = compress("{\"request\":\"GetName\"}").unwrap();
-                    println!("{}",compressed);
-                    match out_clone.send(compressed) {
+                    match out_clone.send("{\"request\":\"GetName\"}") {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
                         }
@@ -79,9 +97,12 @@ impl ws::Handler for Client {
                     serde_json::from_str(&event.payload().unwrap()).unwrap();
 
                 if message.file_type == "" || message.file_type == "plainText" {
-                    let compressed: String =
-                        compress(&event.payload().expect("Error").to_string()).unwrap();
-                    match out_clone.send(compressed.clone()) {
+                    message.file_type = compress(&message.file_type).unwrap();
+                    message.message = compress(&message.message).unwrap();
+
+                    let output: String = serde_json::to_string(&message).unwrap();
+
+                    match out_clone.send(output.clone()) {
                         Err(err) => {
                             eprintln!("Error sending message: {}", err);
                         }
@@ -122,11 +143,15 @@ impl ws::Handler for Client {
                             message.file_type = last_part.to_string().clone();
                         }
 
+                        let compressed_file_type: String = compress(&message.file_type).unwrap();
+                        let compressed_message: String = compress(&message.message).unwrap();
+
+                        message.file_type = compressed_file_type;
+                        message.message = compressed_message;
+
                         let json: String = serde_json::to_string(&message).unwrap();
 
-                        let compressed: String = compress(&json).unwrap();
-
-                        match out_clone.send(compressed) {
+                        match out_clone.send(json) {
                             Err(err) => {
                                 eprintln!("Error sending message: {}", err);
                             }
@@ -155,47 +180,32 @@ impl ws::Handler for Client {
     }
     fn on_message(&mut self, msg: Message) -> Result<()> {
         let string_msg: String = msg.to_string();
-
-        let compressed_bytes: Vec<u8> = match base64::decode(string_msg) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                eprintln!("Base64 decoding error: {}", e);
-                Vec::new() // Exit the function if decoding fails
-            }
-        };
-        if compressed_bytes.len() == 0 {
-            println!("Invalid compressed data!");
-            return Ok(());
-        }
-        let decompressed_result: std::prelude::v1::Result<String, std::io::Error> =
-            decompress(&compressed_bytes);
-        let decompressed: String = match decompressed_result {
-            Ok(data) => data,
-            Err(error) => String::default(),
-        };
-
-        let json_message: Value = serde_json::from_str(&decompressed).unwrap();
+        let json_message: Value = serde_json::from_str(&string_msg).unwrap();
 
         if let Some(field) = json_message.get("request") {
-            let req: Request = serde_json::from_str(&decompressed).expect("msg");
+            let req: Request = serde_json::from_str(&string_msg).expect("msg");
 
             if req.request == RequestTypes::GetName {
                 self.app
-                    .emit_all("client_name", decompressed.clone())
+                    .emit_all("client_name", string_msg.clone())
                     .unwrap();
             }
         } else {
+            let mut message: ClientMessage = serde_json::from_str(&string_msg).unwrap();
+            message.message = decompress_err_handle(message.message);
+            message.file_type = decompress_err_handle(message.file_type);
+
+            let json: String = serde_json::to_string(&message).unwrap();
+
             println!("Got message");
-            self.app
-                .emit_all("client_message", decompressed.clone())
-                .unwrap();
+            self.app.emit_all("client_message", json).unwrap();
         }
         Ok(())
     }
 }
-pub fn handle_websockets(app: AppHandle) {
+pub fn handle_websockets(app: AppHandle, url: String) {
     thread::spawn(move || {
-        let _ = connect("ws://127.0.0.1:3012", |out| Client {
+        let _ = connect(url, |out| Client {
             out: out,
             app: app.clone(),
         });

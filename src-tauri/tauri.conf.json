@@ -6,7 +6,7 @@
   },
   "package": {
     "productName": "Kartof Chat",
-    "version": "0.0.0"
+    "version": "1.0.0"
   },
   "tauri": {
     "allowlist": {
@@ -20,7 +20,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "kartof-chat",
+        "title": "Kartof Chat",
         "width": 800,
         "height": 600,
         "minWidth": 600,
@@ -33,7 +33,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.tauri.dev",
+      "identifier": "com.kartof.chat",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
